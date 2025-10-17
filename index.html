@@ -126,7 +126,7 @@
         </div>
 
         <!-- Staff List Container -->
-        <div id="staffList" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+        <div id="staffList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
             <!-- Staff cards will be inserted here by JavaScript -->
         </div>
 
@@ -245,10 +245,14 @@
 
         // --- PAGINATION & DISPLAY LOGIC ---
         function updateItemsPerPage() {
-            if (window.innerWidth < 640) { // sm breakpoint for Tailwind
-                itemsPerPage = 20; // 2 columns x 10 rows
+            if (window.innerWidth < 768) { // md breakpoint for Tailwind (mobile-first)
+                itemsPerPage = 15; // 1 column x 15 rows
+                staffListContainer.classList.remove('md:grid-cols-2', 'lg:grid-cols-3', 'xl:grid-cols-4');
+                staffListContainer.classList.add('grid-cols-1');
             } else {
                 itemsPerPage = 40; // 4 columns x 10 rows
+                staffListContainer.classList.add('md:grid-cols-2', 'lg:grid-cols-3', 'xl:grid-cols-4');
+                staffListContainer.classList.remove('grid-cols-1');
             }
         }
         
@@ -377,21 +381,37 @@
             });
         }
 
+        // Helper function to escape special characters for regex
+        function escapeRegExp(string) {
+          return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+        }
+
         function applyFilters() {
-            const searchTerm = searchInput.value.toLowerCase().trim();
+            const searchTerm = searchInput.value.trim();
+            const searchTermLower = searchTerm.toLowerCase();
             const selectedGroup = groupFilter.value;
             const selectedClass = classFilter.value;
             const selectedSection = sectionFilter.value;
 
+            // Create a regex for whole-word matching for specific fields
+            const escapedTerm = escapeRegExp(searchTerm);
+            const searchRegex = new RegExp('\\b' + escapedTerm + '\\b', 'i');
+
             filteredStaff = allStaff.filter(staff => {
-                const matchesSearch = staff.name.toLowerCase().includes(searchTerm) || 
-                                      staff.id.toLowerCase().includes(searchTerm) ||
-                                      staff.group.toLowerCase().includes(searchTerm) ||
-                                      staff.class.toLowerCase().includes(searchTerm) ||
-                                      staff.section.toLowerCase().includes(searchTerm);
+                let matchesSearch = true;
+                if (searchTerm) {
+                    matchesSearch = 
+                        staff.name.toLowerCase().includes(searchTermLower) || // Flexible search for names
+                        searchRegex.test(staff.id) ||
+                        searchRegex.test(staff.group) ||
+                        searchRegex.test(staff.class) ||
+                        searchRegex.test(staff.section);
+                }
+                
                 const matchesGroup = !selectedGroup || staff.group === selectedGroup;
                 const matchesClass = !selectedClass || staff.class === selectedClass;
                 const matchesSection = !selectedSection || staff.section === selectedSection;
+
                 return matchesSearch && matchesGroup && matchesClass && matchesSection;
             });
             
