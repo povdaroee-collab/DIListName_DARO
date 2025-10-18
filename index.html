@@ -51,6 +51,19 @@
 </head>
 <body class="dark:bg-slate-900 text-slate-800 dark:text-slate-200 min-h-screen">
 
+    <!-- Initial Loading Overlay -->
+    <div id="initial-loading-overlay" class="fixed inset-0 bg-slate-100 dark:bg-slate-900 flex flex-col justify-center items-center z-50 transition-opacity duration-700">
+        <img src="https://i.postimg.cc/rwznn9Zh/photo-2025-05-01-09-50-00.jpg" alt="Company Logo" class="w-32 h-32 rounded-full mb-6 animate-pulse shadow-lg">
+        <div class="flex items-center text-slate-700 dark:text-slate-200 text-lg">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>ប្រព័ន្ធកំពុងដំណើការសូមរង់ចាំបន្តិច....!</span>
+        </div>
+    </div>
+
+
     <div class="container mx-auto p-4 md:p-6">
         <!-- Header -->
         <header class="text-center mb-6 md:mb-8">
@@ -116,15 +129,6 @@
             </div>
         </div>
         
-        <!-- Loading Spinner -->
-        <div id="loading" class="text-center py-10">
-            <svg class="animate-spin h-8 w-8 text-blue-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p class="mt-2 text-slate-600 dark:text-slate-300">កំពុងទាញទិន្នន័យ...</p>
-        </div>
-
         <!-- Staff List Container -->
         <div id="staffList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
             <!-- Staff cards will be inserted here by JavaScript -->
@@ -167,7 +171,7 @@
         const classFilter = document.getElementById('classFilter');
         const sectionFilter = document.getElementById('sectionFilter');
         const staffListContainer = document.getElementById('staffList');
-        const loadingIndicator = document.getElementById('loading');
+        const initialLoadingOverlay = document.getElementById('initial-loading-overlay');
         const noResultsMessage = document.getElementById('noResults');
         const staffCount = document.getElementById('staffCount');
         const resetButton = document.getElementById('resetButton');
@@ -184,7 +188,7 @@
 
         // --- DATA FETCHING AND PARSING ---
         async function fetchData() {
-            loadingIndicator.style.display = 'block';
+            // The loading overlay is visible by default via HTML/CSS
             staffListContainer.innerHTML = '';
             paginationControls.innerHTML = '';
             try {
@@ -220,7 +224,13 @@
                 console.error('Error fetching or parsing data:', error);
                 staffListContainer.innerHTML = '<p class="text-center text-red-500">មានបញ្ហាក្នុងការទាញទិន្នន័យ។ សូមព្យាយាមម្តងទៀត។</p>';
             } finally {
-                loadingIndicator.style.display = 'none';
+                 if (initialLoadingOverlay) {
+                    initialLoadingOverlay.classList.add('opacity-0');
+                    // Remove the overlay from the DOM after the transition is complete
+                    setTimeout(() => {
+                        initialLoadingOverlay.style.display = 'none';
+                    }, 700); // This should match the transition duration
+                }
             }
         }
         
