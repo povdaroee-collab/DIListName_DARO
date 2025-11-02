@@ -3,848 +3,493 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ស្វែងរកនិស្សិត Firebase</title>
-    <!-- 1. បន្ថែម Tailwind CSS CDN -->
+    <title>បញ្ជីឈ្មោះបុគ្គលិក (Staff List)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- ⚡️ UPDATED: 2. បន្ថែម Firebase SDKs (MODERN v11) -->
-    <!-- យើងនឹង Import មុខងារពី Modules ទាំងនេះនៅក្នុង <script type="module"> -->
-    <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
-    <script type="module" src="https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js"></script>
-
-    <!-- 3. បន្ថែម Lucide (សម្រាប់ Icons) -->
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <!-- 4. បន្ថែម html2canvas (សម្រាប់ Download រូបភាព) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
     <style>
-        /* បន្ថែមពុម្ពអក្សរខ្មែរ */
-        @import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;700&display=swap');
-        
         body {
-            font-family: 'Inter', 'Kantumruy Pro', sans-serif;
-            background-color: #f8fafc; /* bg-slate-50 */
+            font-family: 'Kantumruy Pro', sans-serif;
+            background-color: #f8fafc; /* A lighter, cleaner background */
+            overscroll-behavior-x: none; /* Prevents browser's back/forward swipe gesture */
         }
-
-        /* សម្រាប់លាក់ scrollbar តែនៅតែអាច scroll បាន */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar {
+            width: 8px;
         }
-        .no-scrollbar {
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
         }
-
-        /* កំណត់ទំហំ Icon នៅក្នុង Modal */
-        .detail-icon {
-            width: 16px;
-            height: 16px;
-            flex-shrink: 0; 
+        ::-webkit-scrollbar-thumb {
+            background: #a8a8a8;
+            border-radius: 10px;
         }
-
-        /* សម្រាប់ Modal Animation */
-        .modal-enter {
+        ::-webkit-scrollbar-thumb:hover {
+            background: #888;
+        }
+        .card-enter {
             opacity: 0;
-            transform: scale(0.95);
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
         }
-        .modal-enter-active {
+        .card-enter-active {
             opacity: 1;
-            transform: scale(1);
-            transition: all 200ms ease-out;
+            transform: translateY(0);
         }
-        .modal-leave {
-            opacity: 1;
-            transform: scale(1);
+        .pagination-btn {
+            @apply flex items-center justify-center px-3 h-8 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white;
         }
-        .modal-leave-active {
-            opacity: 0;
-            transform: scale(0.95);
-            transition: all 200ms ease-in;
+        .pagination-btn.active {
+             @apply z-10 text-blue-600 border-blue-300 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 dark:border-slate-500 dark:bg-slate-700 dark:text-white;
         }
-        .modal-overlay-enter { opacity: 0; }
-        .modal-overlay-enter-active { opacity: 1; transition: opacity 200ms ease-out; }
-        .modal-overlay-leave { opacity: 1; }
-        .modal-overlay-leave-active { opacity: 0; transition: opacity 200ms ease-in; }
+        .pagination-btn.disabled {
+            @apply opacity-50 cursor-not-allowed;
+        }
 
     </style>
 </head>
-<body class="bg-slate-50 h-screen flex flex-col overflow-hidden">
+<body class="dark:bg-slate-900 text-slate-800 dark:text-slate-200 min-h-screen">
 
-    <!-- Header (Sticky) -->
-    <div class="sticky top-0 z-20 shadow-md bg-white">
-        <!-- ផ្នែក Header ពណ៌ខៀវ -->
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-700 p-5 flex items-center justify-center h-[72px]">
-            <h1 class="text-2xl font-bold text-white text-center">
-                📦 ស្វែងរកនិស្សិត
+    <!-- Initial Loading Overlay -->
+    <div id="initial-loading-overlay" class="fixed inset-0 bg-slate-100 dark:bg-slate-900 flex flex-col justify-center items-center z-50 transition-opacity duration-700">
+        <img src="https://i.postimg.cc/rwznn9Zh/photo-2025-05-01-09-50-00.jpg" alt="Company Logo" class="w-32 h-32 rounded-full mb-6 animate-pulse shadow-lg">
+        <div class="flex items-center text-slate-700 dark:text-slate-200 text-lg">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>ប្រព័ន្ធកំពុងដំណើការសូមរង់ចាំបន្តិច....!</span>
+        </div>
+    </div>
+
+
+    <div class="container mx-auto p-4 md:p-6">
+        <!-- Header -->
+        <header class="text-center mb-6 md:mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white flex items-center justify-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span>បញ្ជីឈ្មោះបុគ្គលិក</span>
             </h1>
-        </div>
-        
-        <!-- ផ្នែកស្វែងរក (ក៏ Sticky ក្រោម Header) -->
-        <div class="p-5 border-b border-gray-200">
-            <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                    <i data-lucide="search" class="w-5 h-5"></i>
-                </span>
-                <input 
-                    type="text" 
-                    id="search-all"
-                    placeholder="វាយ ឈ្មោះ, ID, ក្រុម, ថ្នាក់, ឬផ្នែកការងារ..."
-                    class="w-full p-3 pl-10 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-            </div>
-            <!-- Status Message Area -->
-            <div id="status-message" class="p-3 mt-4 rounded-md bg-blue-100 text-blue-800 text-sm">⏳ កំពុងទាញបញ្ជីនិស្សិត...</div>
-        </div>
-    </div>
+            <h2 class="text-xl md:text-2xl font-medium text-slate-700 dark:text-slate-300 mt-2">ឧស្សាហកម្មឌីជីថល</h2>
+        </header>
 
-    <!-- ផ្ទៃ Scrollable Content -->
-    <div class="flex-1 overflow-y-auto no-scrollbar p-5">
-        <label class="text-lg font-semibold text-gray-800 mb-3 block" id="results-label">
-            លទ្ធផលស្វែងរក
-        </label>
-        <!-- កន្លែងបង្ហាញ Card -->
-        <div id="card-output-area" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            <!-- Cards នឹងត្រូវបានបញ្ចូលមកទីនេះដោយ JavaScript -->
-        </div>
-    </div>
-
-    <!-- Modal (Pop up) សម្រាប់បង្ហាញព័ត៌មានលម្អិត -->
-    <div id="student-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
-        <!-- Overlay -->
-        <div id="modal-overlay" class="fixed inset-0 bg-black/60 modal-overlay-enter"></div>
-        
-        <!-- Modal Content -->
-        <div id="modal-content" class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col modal-enter">
-            <!-- Modal Header -->
-            <div class="flex items-center justify-between p-5 border-b border-gray-200">
-                <h3 class="text-xl font-bold text-indigo-700">ព័ត៌មានលម្អិតនិស្សិត</h3>
-                <div class="flex items-center space-x-2">
-                    <!-- ប៊ូតុង Download -->
-                    <button id="modal-download-btn" class="text-gray-400 hover:text-blue-500 transition-colors p-1" title="ទាញយករូបភាព">
-                        <i data-lucide="download" class="w-6 h-6"></i>
-                    </button>
-                    <!-- ប៊ូតុង Share Telegram -->
-                    <button id="modal-share-telegram-btn" class="text-gray-400 hover:text-sky-500 transition-colors p-1" title="Share ជម្រើស...">
-                        <i data-lucide="send" class="w-6 h-6"></i>
-                    </button>
-                    <button id="modal-close-btn" class="text-gray-400 hover:text-red-500 transition-colors p-1" title="បិទ">
-                        <i data-lucide="x" class="w-7 h-7"></i>
+        <!-- Filter and Search Controls -->
+        <div class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm p-4 rounded-xl shadow-lg mb-6 sticky top-4 z-10 border dark:border-slate-700">
+            <div class="space-y-4">
+                <!-- Search and Mobile Filter Button Wrapper -->
+                <div class="flex gap-4 items-end">
+                    <!-- Search Input -->
+                    <div class="flex-grow">
+                        <label for="searchInput" class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">ស្វែងរក</label>
+                        <input type="text" id="searchInput" placeholder="ឈ្មោះ, អត្តលេខ, ក្រុម, ថ្នាក់..." class="w-full px-3 py-2 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                    </div>
+                    <!-- Mobile Filter Toggle Button -->
+                    <button id="toggleFiltersBtn" class="md:hidden p-2 bg-slate-200 dark:bg-slate-700 rounded-lg flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
                     </button>
                 </div>
+
+                <!-- Collapsible Filter Area -->
+                <div id="filtersWrapper" class="hidden md:grid md:grid-cols-1 lg:grid-cols-3 gap-4 pt-4 md:pt-0">
+                    <!-- Group Filter -->
+                    <div>
+                        <label for="groupFilter" class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">ក្រុម</label>
+                        <select id="groupFilter" class="w-full px-3 py-2 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                            <option value="">គ្រប់ក្រុម</option>
+                        </select>
+                    </div>
+                    <!-- Class Filter -->
+                    <div>
+                        <label for="classFilter" class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">ថ្នាក់</label>
+                        <select id="classFilter" class="w-full px-3 py-2 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                            <option value="">គ្រប់ថ្នាក់</option>
+                        </select>
+                    </div>
+                    <!-- Section Filter -->
+                    <div>
+                        <label for="sectionFilter" class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">ផ្នែកការងារ</label>
+                        <select id="sectionFilter" class="w-full px-3 py-2 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                            <option value="">គ្រប់ផ្នែក</option>
+                        </select>
+                    </div>
+                </div>
             </div>
-            
-            <!-- Modal Body (Scrollable) -->
-            <div id="modal-body" class="flex-1 overflow-y-auto p-6 space-y-4">
-                <!-- ព័ត៌មាននឹងត្រូវបានបញ្ចូលមកទីនេះ -->
+
+             <div class="flex flex-wrap gap-4 justify-between items-center mt-4">
+                <div id="staffCount" class="text-sm text-slate-600 dark:text-slate-400"></div>
+                <div class="flex items-center gap-3">
+                    <button id="refreshButton" title="ផ្ទុកទិន្នន័យឡើងវិញ" class="group p-2 text-sm bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-hover:rotate-180"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                    </button>
+                    <button id="resetButton" title="សម្អាតតម្រង" class="group p-2 text-sm bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-hover:rotate-[-15deg]"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 12 5 5"/></svg>
+                    </button>
+                </div>
             </div>
-            
-            <!-- Modal Footer (សម្រាប់ប៊ូតុង Telegram) -->
-            <div id="modal-footer" class="p-5 border-t border-gray-100 bg-gray-50">
-                <!-- ប៊ូតុង Telegram នឹងត្រូវបានបញ្ចូលមកទីនេះ -->
-            </div>
+        </div>
+        
+        <!-- Staff List Container -->
+        <div id="staffList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+            <!-- Staff cards will be inserted here by JavaScript -->
+        </div>
+
+        <!-- Pagination Controls -->
+        <div id="paginationControls" class="flex justify-center items-center space-x-1 sm:space-x-2 mt-8">
+            <!-- Pagination buttons will be injected here -->
+        </div>
+
+        <!-- No Results Message -->
+        <div id="noResults" class="hidden text-center py-10">
+            <p class="text-slate-600 dark:text-slate-300 text-lg">មិនមានទិន្នន័យត្រូវគ្នានឹងការស្វែងរកទេ។</p>
         </div>
     </div>
 
-    <!-- ⚡️ NEW: Modal (Pop up) សម្រាប់ជម្រើស Share -->
-    <div id="share-options-modal" class="fixed inset-0 z-[60] flex items-center justify-center p-4 hidden">
-        <!-- Overlay -->
-        <div id="share-options-overlay" class="fixed inset-0 bg-black/60 modal-overlay-enter"></div>
-        
-        <!-- Modal Content -->
-        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-sm modal-enter p-6 space-y-4">
-            <h3 class="text-lg font-bold text-center text-gray-800 mb-4">ជ្រើសរើសរបៀប Share</h3>
-            
-            <button id="share-as-text-btn" class="flex items-center justify-center w-full text-center bg-sky-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-sky-700 transition-colors">
-                <i data-lucide="file-text" class="w-5 h-5 mr-2"></i>
-                Share ព័ត៌មាន (Text)
-            </button>
-
-            <button id="share-as-image-btn" class="flex items-center justify-center w-full text-center bg-blue-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors">
-                <i data-lucide="image" class="w-5 h-5 mr-2"></i>
-                ទាញយករូបភាព (សម្រាប់ Share)
-            </button>
-
-            <button id="share-options-close-btn" class="mt-4 w-full text-center text-gray-600 font-medium py-2 px-4 rounded-lg hover:bg-gray-100 transition-colors">
-                បោះបង់
-            </button>
+    <!-- Footer -->
+    <footer class="text-center py-4 mt-8 border-t dark:border-slate-700">
+        <div id="summaryStats" class="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-sm text-slate-600 dark:text-slate-400 mb-3">
+            <!-- Summary stats will be loaded here by JavaScript -->
         </div>
-    </div>
+        <p class="text-sm text-slate-500 dark:text-slate-400 flex justify-center items-center gap-2">
+            <span>អ្នកអភិវឌ្ឍកម្មវិធី IT SUPPORT |</span>
+            <a href="https://darotrb0-bit.github.io/MMKITSUPPORTDI/" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline flex items-center gap-1">
+                <span>MMKITSUPPORTDI Website</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+            </a>
+        </p>
+    </footer>
 
+    <script>
+        // --- CONFIGURATION ---
+        const SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
+        const SHEET_NAME = 'DIList';
+        const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_NAME}`;
 
-    <!-- ⚡️ UPDATED: ប្រើ type="module" ដើម្បីអាច Import បាន -->
-    <script type="module">
-        // ------------------------------------------------------------------
-        // ⚡️ FIX: បញ្ចូលកូដដែលបាត់បង់ត្រឡប់មកវិញ
-        // ------------------------------------------------------------------
+        // --- DOM ELEMENTS ---
+        const searchInput = document.getElementById('searchInput');
+        const groupFilter = document.getElementById('groupFilter');
+        const classFilter = document.getElementById('classFilter');
+        const sectionFilter = document.getElementById('sectionFilter');
+        const staffListContainer = document.getElementById('staffList');
+        const initialLoadingOverlay = document.getElementById('initial-loading-overlay');
+        const noResultsMessage = document.getElementById('noResults');
+        const staffCount = document.getElementById('staffCount');
+        const resetButton = document.getElementById('resetButton');
+        const refreshButton = document.getElementById('refreshButton');
+        const paginationControls = document.getElementById('paginationControls');
+        const toggleFiltersBtn = document.getElementById('toggleFiltersBtn');
+        const filtersWrapper = document.getElementById('filtersWrapper');
+        const summaryStats = document.getElementById('summaryStats');
 
-        // ------------------------------------------------------------------
-        // ១. Import មុខងារ Firebase v11
-        // ------------------------------------------------------------------
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+        let allStaff = [];
+        let filteredStaff = [];
+        let currentPage = 1;
+        let itemsPerPage = 40; // Default for desktop
 
-        // ------------------------------------------------------------------
-        // ២. មុខងារ Debounce (សម្រាប់បង្កើនល្បឿនស្វែងរក)
-        // ------------------------------------------------------------------
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
-
-        // ------------------------------------------------------------------
-        // ៣. ការកំណត់រចនាសម្ព័ន្ធ Firebase
-        // ------------------------------------------------------------------
-        const firebaseConfig = {
-            apiKey: "AIzaSyAc2g-t9A7du3K_nI2fJnw_OGxhmLfpP6s",
-            authDomain: "dilistname.firebaseapp.com",
-            databaseURL: "https://dilistname-default-rtdb.firebaseio.com",
-            projectId: "dilistname",
-            storageBucket: "dilistname.firebasestorage.app",
-            messagingSenderId: "897983357871",
-            appId: "1:897983357871:web:42a046bc9fb3e0543dc55a"
-        };
-        
-        // ------------------------------------------------------------------
-        // ៤. ធាតុ (Elements) សម្រាប់គ្រប់គ្រង (FIX: នេះជាកន្លែងដែលបាត់)
-        // ------------------------------------------------------------------
-        const statusEl = document.getElementById('status-message');
-        const outputEl = document.getElementById('card-output-area');
-        const searchAllEl = document.getElementById('search-all'); // ⚡️ FIX: ឥឡូវវាត្រូវបានកំណត់
-        const resultsLabel = document.getElementById('results-label');
-
-        // Modal Elements
-        const modal = document.getElementById('student-modal');
-        const modalOverlay = document.getElementById('modal-overlay');
-        const modalContent = document.getElementById('modal-content');
-        const modalBody = document.getElementById('modal-body');
-        const modalFooter = document.getElementById('modal-footer');
-        const modalCloseBtn = document.getElementById('modal-close-btn');
-        const modalDownloadBtn = document.getElementById('modal-download-btn');
-        const modalShareTelegramBtn = document.getElementById('modal-share-telegram-btn');
-
-        // Share Options Modal Elements
-        const shareOptionsModal = document.getElementById('share-options-modal');
-        const shareOptionsOverlay = document.getElementById('share-options-overlay');
-        const shareAsTextBtn = document.getElementById('share-as-text-btn');
-        const shareAsImageBtn = document.getElementById('share-as-image-btn');
-        const shareOptionsCloseBtn = document.getElementById('share-options-close-btn');
-
-        // ------------------------------------------------------------------
-        // ៥. ផ្តួចផ្តើម (Initialize) Firebase (v11 Syntax)
-        // ------------------------------------------------------------------
-        let firebaseApp;
-        let db; 
-        let allStudentsData = []; 
-        let currentModalStudent = null; 
-        let statusTimeout = null; 
-        
-        try {
-            firebaseApp = initializeApp(firebaseConfig);
-            db = getDatabase(firebaseApp);
-        } catch (error) {
-            console.error("Firebase initialization error:", error);
-            showStatus(`មានបញ្ហាក្នុងការភ្ជាប់ Firebase៖ ${error.message} សូមពិនិត្យ Config របស់អ្នក។`, 'error');
-        }
-        
-        // ------------------------------------------------------------------
-        // ៦. មុខងារសម្រាប់បង្ហាញ Status
-        // ------------------------------------------------------------------
-        function showStatus(message, type = 'loading') {
-            if (!statusEl) return;
-            
-            if (statusTimeout) {
-                clearTimeout(statusTimeout);
-                statusTimeout = null;
-            }
-            
-            statusEl.classList.remove('hidden', 'bg-blue-100', 'text-blue-800', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800');
-            
-            if (type === 'loading') {
-                statusEl.classList.add('bg-blue-100', 'text-blue-800');
-                statusEl.textContent = `⏳ ${message}`;
-            } else if (type === 'error') {
-                statusEl.classList.add('bg-red-100', 'text-red-800');
-                statusEl.textContent = `❌ ${message}`;
-            } else if (type === 'success') {
-                statusEl.classList.add('bg-green-100', 'text-green-800');
-                statusEl.textContent = `✅ ${message}`;
-                
-                statusTimeout = setTimeout(() => {
-                    statusEl.classList.add('hidden');
-                }, 2000); 
-            }
-            
-            statusEl.classList.remove('hidden');
-        }
-
-        // ------------------------------------------------------------------
-        // ៧. មុខងារសម្រាប់បង្កើត Card
-        // ------------------------------------------------------------------
-        
-        function createDetailRow(icon, label, value) {
-            if (!value || String(value).trim() === '') {
-                return '';
-            }
-            return `
-                <div class="flex items-start space-x-3 text-sm text-gray-700">
-                    <i data-lucide="${icon}" class="detail-icon text-indigo-600 mt-1"></i>
-                    <div class="flex-1 break-words">
-                        <span class="font-medium">${label}:</span>
-                        <span class="text-gray-900">${value}</span>
-                    </div>
-                </div>
-            `;
-        }
-        
-        function formatTelegramLink(link) {
-            if (!link || String(link).trim() === '') {
-                return '';
-            }
-            let url = String(link).trim();
-            if (url.startsWith('@')) {
-                url = url.substring(1);
-            }
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                if (url.startsWith('t.me/')) {
-                    url = `https://${url}`;
-                } else {
-                    url = `https://t.me/${url}`;
-                }
-            }
-            return url;
-        }
-
-        function openStudentModal(student) {
-            if (!modal || !modalBody || !modalFooter) return;
-            
-            currentModalStudent = student; 
-            
-            const name = student.ឈ្មោះ || 'មិនមានឈ្មោះ';
-            const studentId = String(student.អត្តលេខ || 'N/A');
-            const group = student.ក្រុម || 'N/A';
-            const gender = student.ភេទ || 'N/A';
-            // ⚡️ FIX: ប្រើ Key "ថា្នក់" (មាន ា និង ់) តាមការបញ្ជាក់ចុងក្រោយ
-            const className = student.ថា្នក់ || 'N/A';
-            const major = student.ផ្នែកការងារ || 'មិនបានបញ្ជាក់';
-            const role = student.តួនាទី || 'N/A';
-            const telegramLink = formatTelegramLink(student.តេឡេក្រាម);
-            const imageUrl = student.រូបថត || '';
-            const gen = student.ជំនាន់ || 'N/A';
-            const year = student.ឆ្នាំសិក្សា || 'N/A';
-            const placeholderImg = `https://placehold.co/200x200/e2e8f0/94a3b8?text=${encodeURIComponent(name.charAt(0) || '?')}`;
-            
-            modalBody.innerHTML = `
-                <div class="flex justify-center mb-4">
-                    <div class="w-32 h-32 rounded-full border-4 border-indigo-100 shadow-lg overflow-hidden">
-                        <img 
-                            src="${imageUrl ? imageUrl : placeholderImg}" 
-                            alt="រូបថតរបស់ ${name}" 
-                            class="w-full h-full object-cover"
-                            onerror="this.onerror=null; this.src='${placeholderImg}';"
-                        >
-                    </div>
-                </div>
-                <h3 class="text-2xl font-bold text-indigo-700 break-words text-center">${name}</h3>
-                <p class="text-md font-medium text-gray-600 mb-6 text-center">ID: ${studentId}</p>
-                
-                <div class="space-y-3 border-t border-gray-100 pt-6">
-                    ${createDetailRow('briefcase', 'ផ្នែកការងារ', major)}
-                    ${createDetailRow('award', 'តួនាទី', role)}
-                    ${createDetailRow('layers', 'ជំនាន់', gen)}
-                    ${createDetailRow('calendar-days', 'ឆ្នាំសិក្សា', year)}
-                    <!-- ⚡️ FIX: ប្រើ className ដែលបានទាញមក -->
-                    ${createDetailRow('bookmark', 'ថ្នាក់', className)}
-                    ${createDetailRow('users', 'ក្រុម', group)}
-                    ${createDetailRow('user-check', 'ភេទ', gender)}
-                </div>
-            `;
-            
-            if (telegramLink !== '') {
-                modalFooter.innerHTML = `
-                    <a 
-                        href="${telegramLink}" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        class="flex items-center justify-center w-full text-center bg-indigo-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                        <i data-lucide="send" class="w-4 h-4 mr-2"></i>
-                        មើលតំណភ្ជាប់ (Telegram)
-                    </a>
-                `;
-                modalFooter.classList.remove('hidden');
-            } else {
-                modalFooter.innerHTML = '';
-                modalFooter.classList.add('hidden');
-            }
-
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                modalOverlay.classList.remove('modal-overlay-enter');
-                modalOverlay.classList.add('modal-overlay-enter-active');
-                modalContent.classList.remove('modal-enter');
-                modalContent.classList.add('modal-enter-active');
-            }, 10); 
-
-            lucide.createIcons();
-        }
-
-        function closeStudentModal() {
-            if (!modal) return;
-            
-            modalOverlay.classList.remove('modal-overlay-enter-active');
-            modalOverlay.classList.add('modal-overlay-leave-active');
-            modalContent.classList.remove('modal-enter-active');
-            modalContent.classList.add('modal-leave-active');
-
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                modalOverlay.classList.remove('modal-overlay-leave-active');
-                modalOverlay.classList.add('modal-overlay-enter');
-                modalContent.classList.remove('modal-leave-active');
-                modalContent.classList.add('modal-enter');
-                currentModalStudent = null; 
-            }, 200); 
-        }
-
-        function createStudentSummaryCard(student) {
-            const name = student.ឈ្មោះ || 'មិនមានឈ្មោះ';
-            const studentId = String(student.អត្តលេខ || 'N/A');
-            const major = student.ផ្នែកការងារ || 'មិនបានបញ្ជាក់';
-            const imageUrl = student.រូបថត || '';
-            const placeholderImg = `https://placehold.co/200x200/e2e8f0/94a3b8?text=${encodeURIComponent(name.charAt(0) || '?')}`;
-
-            const card = document.createElement('div');
-            card.className = "bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 transform hover:shadow-2xl hover:scale-[1.03] cursor-pointer";
-            
-            card.innerHTML = `
-                <div class="flex items-center p-5 space-x-4">
-                    <img 
-                        src="${imageUrl ? imageUrl : placeholderImg}" 
-                        alt="រូបថតរបស់ ${name}" 
-                        class="w-16 h-16 object-cover rounded-full border-2 border-indigo-100"
-                        onerror="this.onerror=null; this.src='${placeholderImg}';"
-                    >
-                    <div class="flex-1 min-w-0">
-                        <h3 class="text-lg font-bold text-indigo-700 truncate">${name}</h3>
-                        <p class="text-sm font-medium text-gray-600">ID: ${studentId}</p>
-                        <p class="text-sm text-gray-500 truncate">${major}</p>
-                    </div>
-                    <i data-lucide="chevron-right" class="text-gray-400"></i>
-                </div>
-            `;
-            
-            card.addEventListener('click', () => {
-                openStudentModal(student);
-            });
-            
-            return card;
-        }
-
-        // ------------------------------------------------------------------
-        // ៨. មុខងារ៖ ត្រង (Filter) និង បង្ហាញ (Render) លទ្ធផល
-        // ------------------------------------------------------------------
-        function renderFilteredResults() {
-            if (!searchAllEl || !outputEl || !resultsLabel) return;
-            
-            const searchTerm = searchAllEl.value.toLowerCase().trim();
-            outputEl.innerHTML = ''; 
-            
-            let filteredData = [];
-
-            if (searchTerm) {
-                filteredData = allStudentsData.filter(student => {
-                    const name = String(student.ឈ្មោះ || '').toLowerCase();
-                    const id = String(student.អត្តលេខ || '').toLowerCase(); 
-                    const group = String(student.ក្រុម || '').toLowerCase();
-                    // ⚡️ FIX: ប្រើ Key "ថា្នក់" (មាន ា និង ់) តាមការបញ្ជាក់ចុងក្រោយ
-                    const className = String(student.ថា្នក់ || '').toLowerCase();
-                    const major = String(student.ផ្នែកការងារ || '').toLowerCase(); 
-
-                    return name.includes(searchTerm) || 
-                           id.includes(searchTerm) || 
-                           group.includes(searchTerm) || 
-                           className.includes(searchTerm) ||
-                           major.includes(searchTerm); 
-                });
-            }
-
-            if (filteredData.length > 0) {
-                resultsLabel.textContent = `លទ្ធផលស្វែងរក (${filteredData.length} នាក់)`;
-                filteredData.forEach(student => {
-                    const cardElement = createStudentSummaryCard(student);
-                    outputEl.appendChild(cardElement);
-                });
-            } else {
-                if (searchTerm) {
-                    resultsLabel.textContent = 'លទ្ធផលស្វែងរក';
-                    outputEl.innerHTML = '<p class="text-gray-500 text-center col-span-full">មិនមានទិន្នន័យត្រូវគ្នានឹងការស្វែងរកទេ។</p>';
-                } else {
-                    resultsLabel.textContent = 'លទ្ធផលស្វែងរក';
-                    outputEl.innerHTML = '<p class="text-gray-500 text-center col-span-full">សូមវាយក្នុងប្រអប់ស្វែងរក ដើម្បីបង្ហាញទិន្នន័យ។</p>';
-                }
-            }
-            
-            lucide.createIcons();
-        }
-
-        // ------------------------------------------------------------------
-        // ៩. មុខងារទាញទិន្នន័យ (v11)
-        // ------------------------------------------------------------------
-        function fetchFirebaseData() {
-            if (!db) {
-                showStatus('Firebase មិនទាន់ភ្ជាប់រួចរាល់ទេ។', 'error');
-                return;
-            }
-
-            const path = "/students"; 
-            showStatus(`កំពុងភ្ជាប់ទៅកាន់ Path: ${path}`, 'loading');
-
+        // --- DATA FETCHING AND PARSING ---
+        async function fetchData() {
+            // The loading overlay is visible by default via HTML/CSS
+            staffListContainer.innerHTML = '';
+            paginationControls.innerHTML = '';
             try {
-                const dbRef = ref(db, path); 
-                
-                onValue(dbRef, (snapshot) => {
-                    if (snapshot.exists()) {
-                        const data = snapshot.val();
-                        if (typeof data === 'object' && data !== null) {
-                            
-                            // ⚡️ FIX: សម្អាតទិន្នន័យដោយការ Trim Keys ដែលមើលមិនឃើញ
-                            // រត់ឆ្លងកាត់និស្សិតម្នាក់ៗ
-                            allStudentsData = Object.values(data).map(student => {
-                                const cleanedStudent = {};
-                                
-                                // រត់ឆ្លងកាត់ Properties របស់និស្សិតម្នាក់ៗ (ឈ្មោះ, ថ្នាក់, ...)
-                                Object.keys(student).forEach(propKey => {
-                                    // 1. កាត់ Space ដែលមើលមិនឃើញចេញពី Key
-                                    const trimmedKey = propKey.trim(); 
-                                    
-                                    // 2. បញ្ចូលទិន្នន័យទៅក្នុង Object ស្អាតថ្មី
-                                    cleanedStudent[trimmedKey] = student[propKey];
-                                });
-                                return cleanedStudent; // ត្រឡប់ Object ដែលបានសម្អាត
-                            });
+                const response = await fetch(CSV_URL);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const csvText = await response.text();
+                const rows = csvText.split('\n').slice(1);
 
-                            if (statusEl.textContent.includes('កំពុងភ្ជាប់')) {
-                                showStatus(`បានទាញទិន្នន័យ ${allStudentsData.length} នាក់។ សូមចាប់ផ្តើមស្វែងរក។`, 'success');
-                            }
-                            
-                            // 1. ធ្វើបច្ចុប្បន្នភាព Card ជានិច្ច
-                            renderFilteredResults(); 
+                allStaff = rows.map(row => {
+                    const columns = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
+                    const cleanCols = columns.map(col => col.trim().replace(/^"|"$/g, ''));
 
-                            // ⚡️ NEW: ធ្វើបច្ចុប្បន្នភាព Modal ប្រសិនបើវាកំពុងបើក
-                            if (currentModalStudent) {
-                                // ស្វែងរក ID របស់និស្សិតដែលកំពុងបង្ហាញ
-                                const currentId = currentModalStudent.អត្តលេខ; 
-                                if (currentId) {
-                                    // ស្វែងរកទិន្នន័យថ្មីរបស់និស្សិតនោះ ពីក្នុងបញ្ជីដែល update រួច
-                                    const updatedStudent = allStudentsData.find(student => student.អត្តលេខ === currentId);
-                                    
-                                    if (updatedStudent) {
-                                        // បើនៅតែមាន => បើក Modal ឡើងវិញ (Refresh) ជាមួយទិន្នន័យថ្មី
-                                        // វានឹងជំនួស HTML ចាស់ដោយស្វ័យប្រវត្តិ
-                                        openStudentModal(updatedStudent);
-                                    } else {
-                                        // បើនិស្សិតនោះត្រូវបានលុប => បិទ Modal
-                                        closeStudentModal();
-                                    }
-                                }
-                            }
-                            // ⚡️ END NEW SECTION
-
-                        } else {
-                            allStudentsData = [];
-                            showStatus('ទិន្នន័យមាន ប៉ុន្តែមិនមែនជា Object', 'error');
-                            renderFilteredResults();
-                        }
-                    } else {
-                        allStudentsData = [];
-                        showStatus(`មិនមានទិន្នន័យត្រូវបានរកឃើញនៅ "${path}"`, 'error');
-                        renderFilteredResults();
-                    }
-                }, (error) => {
-                    console.error("Firebase fetch error:", error);
-                    showStatus(`មានបញ្ហាក្នុងការទាញទិន្នន័យ៖ ${error.message}`, 'error');
-                });
-                
-            } catch (error) {
-                console.error("Error setting up listener:", error);
-                showStatus(`មានបញ្ហាក្នុងការតភ្ជាប់៖ ${error.message}`, 'error');
-            }
-        }
-
-        // ------------------------------------------------------------------
-        // ១០. មុខងារ Download និង Share
-        // ------------------------------------------------------------------
-        
-        // Helper function សម្រាប់ទាញយករូបភាព (Fallback)
-        function downloadImageFallback(dataUrl, fileName) {
-            const link = document.createElement('a');
-            link.download = fileName;
-            link.href = dataUrl;
-            link.click();
-        }
-
-        // មុខងារ Download ដើម (សម្រាប់ប៊ូតុង Download ធម្មតា)
-        function generateAndDownloadImage() {
-            if (!html2canvas || !modalBody) {
-                // ⚡️ CHANGED: ប្រើ showStatus ជំនួស alert
-                showStatus('មិនអាចទាញយករូបភាពបានទេ (Error: html2canvas not loaded)', 'error');
-                return;
-            }
-            
-            const studentName = (currentModalStudent && currentModalStudent.ឈ្មោះ) ? currentModalStudent.ឈ្មោះ : 'student-info';
-            const buttonsToHide = document.querySelectorAll('#modal-download-btn, #modal-share-telegram-btn, #modal-close-btn');
-            
-            buttonsToHide.forEach(btn => btn.style.display = 'none');
-            if (modalFooter) modalFooter.style.display = 'none';
-
-            showStatus('កំពុងទាញយករូបភាព...', 'loading');
-            
-            html2canvas(modalContent, {
-                useCORS: true, 
-                allowTaint: true,
-                scale: 2 
-            }).then(canvas => {
-                buttonsToHide.forEach(btn => btn.style.display = 'block');
-                if (modalFooter && modalFooter.innerHTML !== '') modalFooter.style.display = 'block';
-                
-                downloadImageFallback(canvas.toDataURL('image/png'), `${studentName.replace(/ /g, '_')}_info.png`);
-                showStatus('បានទាញយករូបភាពដោយជោគជ័យ!', 'success');
-                
-            }).catch(err => {
-                buttonsToHide.forEach(btn => btn.style.display = 'block');
-                if (modalFooter && modalFooter.innerHTML !== '') modalFooter.style.display = 'block';
-                console.error('Error generating image:', err);
-                showStatus(`មានបញ្ហាក្នុងការបង្កើតរូបភាព៖ ${err.message}`, 'error');
-            });
-        }
-
-        // មុខងារថ្មីសម្រាប់ Share រូបភាពដោយផ្ទាល់ (ប្រើ navigator.share)
-        function generateAndShareImage() {
-            if (!html2canvas || !modalBody) {
-                showStatus('មិនអាចបង្កើតរូបភាពបានទេ (Error: html2canvas not loaded)', 'error');
-                return;
-            }
-            
-            const studentName = (currentModalStudent && currentModalStudent.ឈ្មោះ) ? currentModalStudent.ឈ្មោះ : 'student-info';
-            const fileName = `${studentName.replace(/ /g, '_')}_info.png`;
-            const buttonsToHide = document.querySelectorAll('#modal-download-btn, #modal-share-telegram-btn, #modal-close-btn');
-            
-            buttonsToHide.forEach(btn => btn.style.display = 'none');
-            if (modalFooter) modalFooter.style.display = 'none';
-            
-            showStatus('កំពុងរៀបចំរូបភាពសម្រាប់ Share...', 'loading');
-            
-            html2canvas(modalContent, {
-                useCORS: true, 
-                allowTaint: true,
-                scale: 2 
-            }).then(canvas => {
-                buttonsToHide.forEach(btn => btn.style.display = 'block');
-                if (modalFooter && modalFooter.innerHTML !== '') modalFooter.style.display = 'block';
-
-                canvas.toBlob(blob => {
-                    if (!blob) {
-                        showStatus('មានបញ្ហាក្នុងការបង្កើតរូបភាព (blob)។', 'error');
-                        return;
-                    }
-                    
-                    const file = new File([blob], fileName, { type: 'image/png' });
-                    const shareData = {
-                        files: [file],
-                        title: `ព័ត៌មាននិស្សិត: ${studentName}`,
-                        text: `នេះជាព័ត៌មានសម្រាប់ ${studentName}`
+                    return {
+                        id: cleanCols[4] || '',      // Column E
+                        group: cleanCols[6] || '',   // Column G
+                        name: cleanCols[11] || '',   // Column L
+                        gender: cleanCols[13] || '', // Column N
+                        class: cleanCols[17] || '',  // Column R
+                        section: cleanCols[18] || '',// Column S
+                        photoUrl: cleanCols[26] || ''// Column AA
                     };
+                }).filter(staff => staff.id && staff.name);
 
-                    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
-                        showStatus('សូមជ្រើសរើសកម្មវិធីសម្រាប់ Share...', 'success');
-                        navigator.share(shareData)
-                            .then(() => console.log('Share successful'))
-                            .catch(error => {
-                                if (error.name !== 'AbortError') {
-                                    console.error('Error sharing:', error);
-                                    showStatus('Share មិនสำเร็จ។ កំពុងទាញយករូបភាពជំនួស...','error');
-                                    downloadImageFallback(canvas.toDataURL('image/png'), fileName);
-                                } else {
-                                    console.log('Share canceled by user.');
-                                    setTimeout(() => {
-                                        if (statusEl.textContent.includes('សូមជ្រើសរើស')) {
-                                            statusEl.classList.add('hidden');
-                                        }
-                                    }, 500);
-                                }
-                            });
-                    } else {
-                        showStatus('Browser មិនគាំទ្រការ Share ទេ។ កំពុងទាញយករូបភាពជំនួស...', 'error');
-                        downloadImageFallback(canvas.toDataURL('image/png'), fileName);
-                    }
-                }, 'image/png');
+                filteredStaff = [...allStaff];
+                updateSummaryStats(filteredStaff); // Initial stats calculation
+                populateFilters();
+                updateItemsPerPage();
+                displayPage(1);
 
-            }).catch(err => {
-                buttonsToHide.forEach(btn => btn.style.display = 'block');
-                if (modalFooter && modalFooter.innerHTML !== '') modalFooter.style.display = 'block';
-                console.error('Error generating image:', err);
-                showStatus(`មានបញ្ហាក្នុងការបង្កើតរូបភាព៖ ${err.message}`, 'error');
+            } catch (error) {
+                console.error('Error fetching or parsing data:', error);
+                staffListContainer.innerHTML = '<p class="text-center text-red-500">មានបញ្ហាក្នុងការទាញទិន្នន័យ។ សូមព្យាយាមម្តងទៀត។</p>';
+            } finally {
+                 if (initialLoadingOverlay) {
+                    initialLoadingOverlay.classList.add('opacity-0');
+                    // Remove the overlay from the DOM after the transition is complete
+                    setTimeout(() => {
+                        initialLoadingOverlay.style.display = 'none';
+                    }, 700); // This should match the transition duration
+                }
+            }
+        }
+        
+        // --- SUMMARY STATS ---
+        function updateSummaryStats(staffArray) {
+            const totalStaffCount = staffArray.length;
+            // Assuming 'F' or 'ស្រី' in the gender column denotes female
+            const femaleStaffCount = staffArray.filter(staff => staff.gender.toUpperCase() === 'F' || staff.gender === 'ស្រី').length; 
+            
+            if(summaryStats){
+                summaryStats.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        <span class="font-semibold">បុគ្គលិកសរុប៖</span> ${totalStaffCount} នាក់
+                    </div> 
+                    <div class="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+                        <span class="font-semibold">បុគ្គលិកស្រី៖</span> ${femaleStaffCount} នាក់
+                    </div>`;
+            }
+        }
+
+        // --- PAGINATION & DISPLAY LOGIC ---
+        function updateItemsPerPage() {
+            if (window.innerWidth < 768) { // md breakpoint for Tailwind (mobile-first)
+                itemsPerPage = 15; // 1 column x 15 rows
+                staffListContainer.classList.remove('md:grid-cols-2', 'lg:grid-cols-3', 'xl:grid-cols-4');
+                staffListContainer.classList.add('grid-cols-1');
+            } else {
+                itemsPerPage = 40; // 4 columns x 10 rows
+                staffListContainer.classList.add('md:grid-cols-2', 'lg:grid-cols-3', 'xl:grid-cols-4');
+                staffListContainer.classList.remove('grid-cols-1');
+            }
+        }
+        
+        function displayPage(page) {
+            currentPage = page;
+            staffListContainer.innerHTML = '';
+            
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedItems = filteredStaff.slice(startIndex, endIndex);
+
+            noResultsMessage.style.display = filteredStaff.length === 0 ? 'block' : 'none';
+            staffCount.textContent = `លទ្ធផល៖ ${filteredStaff.length} នាក់`;
+
+            paginatedItems.forEach((staff, index) => {
+                const card = document.createElement('div');
+                card.className = 'bg-white dark:bg-slate-800 rounded-xl shadow-md hover:shadow-xl hover:scale-[1.03] p-4 transition-all duration-300 card-enter border border-slate-200 dark:border-slate-700';
+                card.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <div class="w-16 h-16 rounded-full flex-shrink-0 bg-slate-200 dark:bg-slate-700 border-4 border-slate-200 dark:border-slate-600 overflow-hidden">
+                            <img 
+                                src="${staff.photoUrl || `https://placehold.co/100x100/EBF4FF/333333?text=${staff.name.charAt(0)}`}" 
+                                onerror="this.onerror=null; this.src='https://placehold.co/100x100/EBF4FF/333333?text=${staff.name.charAt(0)}'"
+                                alt="រូបថតរបស់ ${staff.name}" 
+                                class="w-full h-full object-cover"
+                                loading="lazy"
+                                decoding="async"
+                            >
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-md sm:text-lg font-bold text-slate-900 dark:text-white truncate">${staff.name}</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">អត្តលេខ: ${staff.id}</p>
+                            <div class="mt-2 flex flex-wrap gap-x-2 gap-y-1">
+                                ${staff.group ? `<span class="px-2 py-0.5 text-xs font-semibold text-green-800 bg-green-100 dark:bg-green-900 dark:text-green-200 rounded-full">${staff.group}</span>` : ''}
+                                ${staff.class ? `<span class="px-2 py-0.5 text-xs font-semibold text-indigo-800 bg-indigo-100 dark:bg-indigo-900 dark:text-indigo-200 rounded-full">${staff.class}</span>` : ''}
+                                ${staff.section ? `<span class="px-2 py-0.5 text-xs font-semibold text-purple-800 bg-purple-100 dark:bg-purple-900 dark:text-purple-200 rounded-full">${staff.section}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                staffListContainer.appendChild(card);
+                setTimeout(() => card.classList.add('card-enter-active'), index * 25);
+            });
+            
+            setupPagination();
+        }
+
+        function setupPagination() {
+            paginationControls.innerHTML = '';
+            const totalPages = Math.ceil(filteredStaff.length / itemsPerPage);
+
+            if (totalPages <= 1) return;
+
+            // Previous Button
+            const prevButton = document.createElement('button');
+            prevButton.innerHTML = `&laquo;`;
+            prevButton.className = 'pagination-btn';
+            if (currentPage === 1) prevButton.classList.add('disabled');
+            prevButton.addEventListener('click', () => {
+                if(currentPage > 1) displayPage(currentPage - 1);
+            });
+            paginationControls.appendChild(prevButton);
+
+            // Page Buttons
+            let pagesToShow = [];
+            if (totalPages <= 5) {
+                for (let i = 1; i <= totalPages; i++) pagesToShow.push(i);
+            } else {
+                if (currentPage <= 3) {
+                    pagesToShow = [1, 2, 3, '...', totalPages];
+                } else if (currentPage >= totalPages - 2) {
+                    pagesToShow = [1, '...', totalPages - 2, totalPages - 1, totalPages];
+                } else {
+                    pagesToShow = [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+                }
+            }
+
+            pagesToShow.forEach(page => {
+                 if (page === '...') {
+                    const dots = document.createElement('span');
+                    dots.className = 'flex items-center justify-center px-3 h-8 text-sm font-medium text-gray-500 dark:text-slate-400';
+                    dots.textContent = '...';
+                    paginationControls.appendChild(dots);
+                } else {
+                    const pageButton = document.createElement('button');
+                    pageButton.textContent = page;
+                    pageButton.className = 'pagination-btn';
+                    if (page === currentPage) pageButton.classList.add('active');
+                    pageButton.addEventListener('click', () => displayPage(page));
+                    paginationControls.appendChild(pageButton);
+                }
+            });
+
+            // Next Button
+            const nextButton = document.createElement('button');
+            nextButton.innerHTML = `&raquo;`;
+            nextButton.className = 'pagination-btn';
+            if (currentPage === totalPages) nextButton.classList.add('disabled');
+            nextButton.addEventListener('click', () => {
+                if(currentPage < totalPages) displayPage(currentPage + 1);
+            });
+            paginationControls.appendChild(nextButton);
+        }
+
+        // --- FILTERING LOGIC ---
+        function populateFilters() {
+            const groups = [...new Set(allStaff.map(s => s.group).filter(Boolean))].sort();
+            const classes = [...new Set(allStaff.map(s => s.class).filter(Boolean))].sort();
+            const sections = [...new Set(allStaff.map(s => s.section).filter(Boolean))].sort();
+
+            populateSelect(groupFilter, groups);
+            populateSelect(classFilter, classes);
+            populateSelect(sectionFilter, sections);
+        }
+
+        function populateSelect(selectElement, options) {
+            // Clear previous options except the first one
+            while (selectElement.options.length > 1) {
+                selectElement.remove(1);
+            }
+            options.forEach(option => {
+                const opt = document.createElement('option');
+                opt.value = option;
+                opt.textContent = option;
+                selectElement.appendChild(opt);
             });
         }
 
-        function shareModalToTelegram() {
-            if (!currentModalStudent) {
-                // ⚡️ CHANGED: ប្រើ showStatus ជំនួស alert
-                showStatus('មិនមានទិន្នន័យនិស្សិតសម្រាប់ Share ទេ។', 'error');
-                return;
-            }
-            
-            const name = currentModalStudent.ឈ្មោះ || 'N/A';
-            const gender = currentModalStudent.ភេទ || 'N/A';
-            const studentId = String(currentModalStudent.អត្តលេខ || 'N/A');
-            const major = currentModalStudent.ផ្នែកការងារ || 'N/A';
-            const role = currentModalStudent.តួនាទី || 'N/A';
-            const gen = currentModalStudent.ជំនាន់ || 'N/A';
-            const year = currentModalStudent.ឆ្នាំសិក្សា || 'N/A';
-            // ⚡️ FIX: ប្រើ Key "ថា្នក់" (មាន ា និង ់) តាមការបញ្ជាក់ចុងក្រោយ
-            const className = currentModalStudent.ថា្នក់ || 'N/A';
-            const group = currentModalStudent.ក្រុម || 'N/A';
-            const telegramLink = formatTelegramLink(currentModalStudent.តេឡេក្រាម);
-
-            let text = `===== ព័ត៌មាននិស្សិត =====\n\n`;
-            text += `👤 ឈ្មោះ: ${name}\n`;
-            text += `💳 ID: ${studentId}\n\n`;
-            text += `⚧️ ភេទ: ${gender}\n\n`;
-            text += `--- ព័ត៌មានសិក្សា ---\n`;
-            text += `🧑‍💼 ផ្នែកការងារ: ${major}\n`;
-            text += `✨ តួនាទី: ${role}\n`;
-            text += `📚 ជំនាន់: ${gen}\n`;
-            text += `📅 ឆ្នាំសិក្សា: ${year}\n`;
-            // ⚡️ FIX: ប្រើ Key "ថ្នាក" (គ្មាន ់) ឱ្យដូចក្នុង Firebase
-            text += `🔖 ថ្នាក់: ${className}\n`;
-            text += `👥 ក្រុម: ${group}\n`;
-            
-            
-            if (telegramLink) {
-                text += `--- ទំនាក់ទំនង ---\n`;
-                text += `✈️ Telegram: ${telegramLink}\n`;
-            }
-            
-            const encodedText = encodeURIComponent(text);
-            const telegramUrl = `https://t.me/share/url?url=student-info&text=${encodedText}`;
-            
-            window.open(telegramUrl, '_blank');
+        // Helper function to escape special characters for regex
+        function escapeRegExp(string) {
+          return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
         }
 
-        // កែសម្រួលមុខងារបើក/បិទ Modal ទីពីរ ឱ្យមាន Animation
-        function openShareOptionsModal() {
-            if (!shareOptionsModal || !shareOptionsOverlay) return;
-            
-            const content = shareOptionsModal.querySelector('.relative'); 
-            if (!content) return;
+        function applyFilters() {
+            const searchTerm = searchInput.value.trim();
+            const searchTermLower = searchTerm.toLowerCase();
+            const selectedGroup = groupFilter.value;
+            const selectedClass = classFilter.value;
+            const selectedSection = sectionFilter.value;
 
-            shareOptionsModal.classList.remove('hidden');
-            
-            setTimeout(() => {
-                shareOptionsOverlay.classList.remove('modal-overlay-enter');
-                shareOptionsOverlay.classList.add('modal-overlay-enter-active');
-                content.classList.remove('modal-enter');
-                content.classList.add('modal-enter-active');
-            }, 10);
+            // Create a regex for whole-word matching for specific fields
+            const escapedTerm = escapeRegExp(searchTerm);
+            const searchRegex = new RegExp('\\b' + escapedTerm + '\\b', 'i');
 
-            lucide.createIcons(); 
+            filteredStaff = allStaff.filter(staff => {
+                let matchesSearch = true;
+                if (searchTerm) {
+                    matchesSearch = 
+                        staff.name.toLowerCase().includes(searchTermLower) || // Flexible search for names
+                        searchRegex.test(staff.id) ||
+                        searchRegex.test(staff.group) ||
+                        searchRegex.test(staff.class) ||
+                        searchRegex.test(staff.section);
+                }
+                
+                const matchesGroup = !selectedGroup || staff.group === selectedGroup;
+                const matchesClass = !selectedClass || staff.class === selectedClass;
+                const matchesSection = !selectedSection || staff.section === selectedSection;
+
+                return matchesSearch && matchesGroup && matchesClass && matchesSection;
+            });
+            
+            updateSummaryStats(filteredStaff); // Update stats based on filter
+            displayPage(1); // Reset to first page
         }
 
-        function closeShareOptionsModal() {
-            if (!shareOptionsModal || !shareOptionsOverlay) return;
-
-            const content = shareOptionsModal.querySelector('.relative'); 
-            if (!content) {
-                 shareOptionsModal.classList.add('hidden'); 
-                 return;
-            }
-
-            shareOptionsOverlay.classList.remove('modal-overlay-enter-active');
-            shareOptionsOverlay.classList.add('modal-overlay-leave-active');
-            content.classList.remove('modal-enter-active');
-            content.classList.add('modal-leave-active');
-
-            setTimeout(() => {
-                shareOptionsModal.classList.add('hidden');
-                shareOptionsOverlay.classList.remove('modal-overlay-leave-active');
-                shareOptionsOverlay.classList.add('modal-overlay-enter');
-                content.classList.remove('modal-leave-active');
-                content.classList.add('modal-enter');
-            }, 200);
+        function resetAllFilters() {
+            searchInput.value = '';
+            groupFilter.value = '';
+            classFilter.value = '';
+            sectionFilter.value = '';
+            filteredStaff = [...allStaff];
+            updateSummaryStats(filteredStaff); // Update stats on reset
+            displayPage(1);
         }
 
-
-        // ------------------------------------------------------------------
-        // ១១. ចាប់ផ្តើមកម្មវិធី
-        // ------------------------------------------------------------------
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-            
-            if (searchAllEl) {
-                searchAllEl.addEventListener('input', debounce(renderFilteredResults, 300));
-            }
-
-            // Event Listeners សម្រាប់បិទ Modal
-            if (modalCloseBtn) {
-                modalCloseBtn.addEventListener('click', closeStudentModal);
-            }
-            if (modalOverlay) {
-                modalOverlay.addEventListener('click', closeStudentModal);
-            }
-            
-            // កែសម្រួល Listeners របស់ Modal
-            if (modalDownloadBtn) {
-                modalDownloadBtn.addEventListener('click', generateAndDownloadImage);
-            }
-            if (modalShareTelegramBtn) {
-                modalShareTelegramBtn.addEventListener('click', openShareOptionsModal);
-            }
-
-            // Listeners សម្រាប់ Share Options Modal
-            if (shareOptionsCloseBtn) {
-                shareOptionsCloseBtn.addEventListener('click', closeShareOptionsModal);
-            }
-            if (shareOptionsOverlay) {
-                shareOptionsOverlay.addEventListener('click', closeShareOptionsModal);
-            }
-            if (shareAsTextBtn) {
-                shareAsTextBtn.addEventListener('click', () => {
-                    shareModalToTelegram(); 
-                    closeShareOptionsModal(); 
-                });
-            }
-            if (shareAsImageBtn) {
-                shareAsImageBtn.addEventListener('click', () => {
-                    generateAndShareImage(); 
-                    closeShareOptionsModal(); 
-                });
-            }
-
-            // ចាប់ផ្តើមទាញទិន្នន័យ (Realtime)
-            fetchFirebaseData();
-            
-            // ហៅ render ម្តងដំបូងដើម្បីបង្ហាញសារ "សូមវាយ..."
-            renderFilteredResults();
+        // --- EVENT LISTENERS ---
+        document.addEventListener('DOMContentLoaded', fetchData);
+        searchInput.addEventListener('input', applyFilters);
+        groupFilter.addEventListener('change', applyFilters);
+        classFilter.addEventListener('change', applyFilters);
+        sectionFilter.addEventListener('change', applyFilters);
+        resetButton.addEventListener('click', resetAllFilters);
+        refreshButton.addEventListener('click', () => {
+            location.reload();
         });
-    </script>
+        toggleFiltersBtn.addEventListener('click', () => {
+            filtersWrapper.classList.toggle('hidden');
+        });
+        window.addEventListener('resize', () => {
+            updateItemsPerPage();
+            // Re-render the current view with the new itemsPerPage value
+            displayPage(currentPage); 
+        });
 
+        // --- SWIPE GESTURE NAVIGATION FOR MOBILE ---
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        function handleSwipeGesture() {
+            const totalPages = Math.ceil(filteredStaff.length / itemsPerPage);
+            const swipeThreshold = 50; // Minimum pixel distance for a swipe
+
+            if (touchEndX < touchStartX - swipeThreshold) {
+                // Swiped left
+                if (currentPage < totalPages) {
+                    displayPage(currentPage + 1);
+                }
+            }
+
+            if (touchEndX > touchStartX + swipeThreshold) {
+                // Swiped right
+                if (currentPage > 1) {
+                    displayPage(currentPage - 1);
+                }
+            }
+        }
+
+        staffListContainer.addEventListener('touchstart', (event) => {
+            touchStartX = event.changedTouches[0].screenX;
+        }, { passive: true });
+
+        staffListContainer.addEventListener('touchend', (event) => {
+            touchEndX = event.changedTouches[0].screenX;
+            handleSwipeGesture();
+        });
+
+    </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
